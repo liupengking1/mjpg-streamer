@@ -128,12 +128,12 @@ void record_data(double time_val, float write_speed){
 
         memset(buf, 0, 255);
         snprintf(buf, sizeof(buf), "%s/latency", logPath);
-        latency = fopen(buf, "w");
+        latency = fopen(buf, "a");
         memset(buf, 0, 255);
         snprintf(buf, sizeof(buf), "%s/speed", logPath);
-        speed = fopen(buf, "w");
-        fprintf(latency, "%d", (int) time_val);
-        fprintf(speed, "%f", write_speed);
+        speed = fopen(buf, "a");
+        fprintf(latency, "%d,", (int) time_val);
+        fprintf(speed, "%f,", write_speed);
         fclose(latency);
         fclose(speed);
         if(timediff(&last_record) > 100000){
