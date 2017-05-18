@@ -32,10 +32,12 @@
 #include <sys/stat.h>
 #include <getopt.h>
 #include <pthread.h>
-#include <fcntl.h>
 #include <time.h>
 #include <syslog.h>
 #include <dirent.h>
+
+#include <libgen.h>
+#include <fcntl.h>
 
 #include "output_file.h"
 
@@ -43,6 +45,18 @@
 #include "../../mjpg_streamer.h"
 
 #define OUTPUT_PLUGIN_NAME "FILE output plugin"
+
+#define PER_SEC(unit, usec) (((double)(unit)) / ((double)(usec) /1000000))
+#define MB_PER_SEC(size, usec) (PER_SEC((size), (usec)) / (1024 * 1024))
+
+#define PER_MB(delay, size) ((double)(delay) / ((double)(size) / (1024 * 1024)))
+#define DELAY_PER_MB(delay, size) (PER_MB((delay), (size)) / 1000)
+
+
+static size_t total_size = 0;
+static struct timeval last_write;
+static struct timeval last_record;
+
 
 static pthread_t worker;
 static globals *pglobal;
@@ -53,6 +67,7 @@ static char *command = NULL;
 static int input_number = 0;
 static char *mjpgFileName = NULL;
 static char *linkFileName = NULL;
+static char *logPath = NULL;
 
 /******************************************************************************
 Description.: print a help message
@@ -70,12 +85,67 @@ void help(void)
             " [-l | --link ]..........: link the last picture in ringbuffer as this fixed named file\n" \
             " [-d | --delay ].........: delay after saving pictures in ms\n" \
             " [-i | --input ].........: read frames from the specified input plugin\n" \
+            " [-l | --logpath ].........: path to the record log files\n" \
             " The following arguments are takes effect only if the current mode is not MJPG\n" \
             " [-s | --size ]..........: size of ring buffer (max number of pictures to hold)\n" \
             " [-e | --exceed ]........: allow ringbuffer to exceed limit by this amount\n" \
             " [-c | --command ].......: execute command after saving picture\n"\
             " ---------------------------------------------------------------\n");
 }
+
+void record_disk_size(){
+        char buf[255];
+        char* mp = folder;
+        memset(buf, 0, 255);
+        snprintf(buf, sizeof(buf), "%s/mountpoint", logPath);
+        FILE* f = fopen(buf,"w");
+        fprintf(f, "%s", mp);
+        fclose(f);
+        memset(buf, 0, 255);
+        snprintf(buf, sizeof(buf), "findmnt -bno size %s > %s/disk_size", mp, logPath);
+        system(buf);
+        printf("\nmountpoint:%s\n",mp);
+
+        memset(buf, 0, 255);
+        snprintf(buf, sizeof(buf), "%s/block_size", logPath);
+        FILE* f1 = fopen(buf, "w");
+        struct stat s;
+        stat(mp, &s);
+        fprintf(f1, "%ld", s.st_blksize);
+        fclose(f1);
+}
+
+time_t timediff(struct timeval *start){
+        struct timeval stop;
+        gettimeofday(&stop, NULL);
+        return (stop.tv_sec - start->tv_sec) * 1000000 + stop.tv_usec - start->tv_usec;
+}
+
+void record_data(double time_val, float write_speed){
+        FILE* latency;
+        FILE* speed;
+        char buf[255];
+
+        memset(buf, 0, 255);
+        snprintf(buf, sizeof(buf), "%s/latency", logPath);
+        latency = fopen(buf, "w");
+        memset(buf, 0, 255);
+        snprintf(buf, sizeof(buf), "%s/speed", logPath);
+        speed = fopen(buf, "w");
+        fprintf(latency, "%d", (int) time_val);
+        fprintf(speed, "%f", write_speed);
+        fclose(latency);
+        fclose(speed);
+        if(timediff(&last_record) > 100000){
+                memset(buf, 0, 255);
+                snprintf(buf, sizeof(buf), "filefrag -v %s/%s > %s/filefrag", folder, mjpgFileName, logPath);
+                system(buf);
+                gettimeofday(&last_record, NULL);
+        }
+}
+
+
+
 
 /******************************************************************************
 Description.: clean up allocated resources
@@ -209,6 +279,7 @@ void *worker_thread(void *arg)
     time_t t;
     struct tm *now;
     unsigned char *tmp_framebuffer = NULL;
+    struct timeval start;
 
     /* set cleanup handler to cleanup allocated resources */
     pthread_cleanup_push(worker_cleanup, NULL);
@@ -325,12 +396,20 @@ void *worker_thread(void *arg)
             }
         } else { // recording to MJPG file
             /* save picture to file */
-            if(write(fd, frame, frame_size) < 0) {
+            gettimeofday(&start, NULL);
+	    printf("interval:%lld us, ",(long long) timediff(&last_write));
+            ssize_t wrote_size = write(fd, frame, frame_size);
+            if(wrote_size < 0) {
                 OPRINT("could not write to file %s\n", buffer2);
                 perror("write()");
                 close(fd);
                 return NULL;
             }
+	    fsync(fd);
+            gettimeofday(&last_write, NULL);
+            total_size += wrote_size;
+            printf("wrote %d/%zu bytes, delay_per_frame: %lld us, delay_per_kb: %lf us, instant_speed: %f MBps, average_speed: %f MBps\n", wrote_size, total_size, (long long) timediff(&start), DELAY_PER_MB(timediff(&start), wrote_size), MB_PER_SEC(wrote_size, timediff(&start)), MB_PER_SEC(wrote_size, timediff(&start)+timediff(&last_write)));
+            record_data(timediff(&start), MB_PER_SEC(wrote_size, timediff(&start)+timediff(&last_write)));
         }
 
         /* if specified, wait now */
@@ -390,6 +469,7 @@ int output_init(output_parameter *param, int id)
             {"link", required_argument, 0, 0},
             {"c", required_argument, 0, 0},
             {"command", required_argument, 0, 0},
+            {"logpath", required_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -467,6 +547,12 @@ int output_init(output_parameter *param, int id)
             DBG("case 16,17\n");
             command = strdup(optarg);
             break;
+            /* l logpath */
+        case 18:
+        case 19:
+            DBG("case 18,19\n");
+            logPath = strdup(optarg);
+            break;
         }
     }
 
@@ -533,6 +619,11 @@ int output_init(output_parameter *param, int id)
 
 	param->global->out[id].out_parameters[1] = filename_ctrl;
 
+    // record mount point infos
+    total_size = 0;
+    gettimeofday(&last_write, NULL);
+    gettimeofday(&last_record, NULL);
+    record_disk_size();
 
     return 0;
 }
