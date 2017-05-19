@@ -147,7 +147,7 @@ void record_data(double time_val, float write_speed){
         snprintf(buf, sizeof(buf), "cat %s/speed >> %s/speeds", logPath, logPath);
         system(buf);
 
-#if 1
+#if 0
         /* Write current file fragmentation */
         if(timediff(&last_record) > 100000) {
                 memset(buf, 0, sizeof(buf));
