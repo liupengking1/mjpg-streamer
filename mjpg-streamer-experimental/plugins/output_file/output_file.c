@@ -442,10 +442,10 @@ void *worker_thread(void *arg)
                 return NULL;
             }
             fsync(fd);
-            gettimeofday(&last_write, NULL);
             total_size += wrote_size;
-            printf("wrote %d/%zu bytes, delay_per_frame: %lld us, delay_per_kb: %lf us, instant_speed: %f MBps, average_speed: %f MBps\n", wrote_size, total_size, (long long) timediff(&start), DELAY_PER_MB(timediff(&start), wrote_size), MB_PER_SEC(wrote_size, timediff(&start)), MB_PER_SEC(wrote_size, timediff(&start)+timediff(&last_write)));
-            record_data(timediff(&start), MB_PER_SEC(wrote_size, timediff(&start)+timediff(&last_write)));
+            printf("wrote %d/%zu bytes, delay_per_frame: %lld us, delay_per_kb: %lf us, instant_speed: %f MBps, average_speed: %f MBps\n", wrote_size, total_size, (long long) timediff(&start), DELAY_PER_MB(timediff(&start), wrote_size), MB_PER_SEC(wrote_size, timediff(&start)), MB_PER_SEC(wrote_size, timediff(&last_write)));
+            record_data(timediff(&start), MB_PER_SEC(wrote_size, timediff(&last_write)));
+            gettimeofday(&last_write, NULL);
             if(total_size > 1<<30) {
                 total_size = 0;
                 counter++;
