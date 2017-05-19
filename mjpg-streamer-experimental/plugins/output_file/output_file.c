@@ -286,7 +286,7 @@ int open_new_movie(int id){
         close(fd);
     }
     char *fnBuffer = malloc(strlen(mjpgFileName) + strlen(folder) + 3);
-    sprintf(fnBuffer, "%s-%d.avi/%s", folder, id, mjpgFileName);
+    sprintf(fnBuffer, "%s/%s-%d.avi", folder, mjpgFileName, id);
 
     OPRINT("output file.......: %s\n", fnBuffer);
     if((fd = open(fnBuffer, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
