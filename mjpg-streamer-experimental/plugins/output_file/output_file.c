@@ -94,19 +94,19 @@ void help(void)
 }
 
 void record_disk_size(){
-        char buf[255];
+        char buf[1024];
         char* mp = folder;
-        memset(buf, 0, 255);
+        memset(buf, 0, sizeof(buf));
         snprintf(buf, sizeof(buf), "%s/mountpoint", logPath);
         FILE* f = fopen(buf,"w");
         fprintf(f, "%s", mp);
         fclose(f);
-        memset(buf, 0, 255);
+        memset(buf, 0, sizeof(buf));
         snprintf(buf, sizeof(buf), "findmnt -bno size %s > %s/disk_size", mp, logPath);
         system(buf);
         printf("\nmountpoint:%s\n",mp);
 
-        memset(buf, 0, 255);
+        memset(buf, 0, sizeof(buf));
         snprintf(buf, sizeof(buf), "%s/block_size", logPath);
         FILE* f1 = fopen(buf, "w");
         struct stat s;
@@ -124,20 +124,31 @@ time_t timediff(struct timeval *start){
 void record_data(double time_val, float write_speed){
         FILE* latency;
         FILE* speed;
-        char buf[255];
+        char buf[1024];
 
-        memset(buf, 0, 255);
+        /* Write instant speed and latency */
+        memset(buf, 0, sizeof(buf));
         snprintf(buf, sizeof(buf), "%s/latency", logPath);
-        latency = fopen(buf, "a");
-        memset(buf, 0, 255);
+        latency = fopen(buf, "w");
+        memset(buf, 0, sizeof(buf));
         snprintf(buf, sizeof(buf), "%s/speed", logPath);
-        speed = fopen(buf, "a");
+        speed = fopen(buf, "w");
         fprintf(latency, "%d,", (int) time_val);
         fprintf(speed, "%f,", write_speed);
         fclose(latency);
         fclose(speed);
-        if(timediff(&last_record) > 100000){
-                memset(buf, 0, 255);
+
+        /* Write speed and latency history */
+        memset(buf, 0, sizeof(buf));
+        snprintf(buf, sizeof(buf), "cat %s/latency >> %s/latencies", logPath, logPath);
+        system(buf);
+        memset(buf, 0, sizeof(buf));
+        snprintf(buf, sizeof(buf), "cat %s/speed >> %s/speeds", logPath, logPath);
+        system(buf);
+
+        /* Write current file fragmentation */
+        if(timediff(&last_record) > 100000) {
+                memset(buf, 0, sizeof(buf));
                 snprintf(buf, sizeof(buf), "filefrag -v %s/%s > %s/filefrag", folder, mjpgFileName, logPath);
                 system(buf);
                 gettimeofday(&last_record, NULL);
