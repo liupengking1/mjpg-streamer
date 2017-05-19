@@ -68,6 +68,7 @@ static int input_number = 0;
 static char *mjpgFileName = NULL;
 static char *linkFileName = NULL;
 static char *logPath = NULL;
+static char *currentFilePath = NULL;
 
 /******************************************************************************
 Description.: print a help message
@@ -146,13 +147,15 @@ void record_data(double time_val, float write_speed){
         snprintf(buf, sizeof(buf), "cat %s/speed >> %s/speeds", logPath, logPath);
         system(buf);
 
+#if 1
         /* Write current file fragmentation */
         if(timediff(&last_record) > 100000) {
                 memset(buf, 0, sizeof(buf));
-                snprintf(buf, sizeof(buf), "filefrag -v %s/%s > %s/filefrag", folder, mjpgFileName, logPath);
+                snprintf(buf, sizeof(buf), "filefrag -v %s > %s/filefrag", currentFilePath, logPath);
                 system(buf);
                 gettimeofday(&last_record, NULL);
         }
+#endif
 }
 
 
@@ -287,7 +290,7 @@ int open_new_movie(int id){
     }
     char *fnBuffer = malloc(strlen(mjpgFileName) + strlen(folder) + 3);
     sprintf(fnBuffer, "%s/%s-%d.avi", folder, mjpgFileName, id);
-
+    currentFilePath = strdup(fnBuffer);
     OPRINT("output file.......: %s\n", fnBuffer);
     if((fd = open(fnBuffer, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
         OPRINT("could not open the file %s\n", fnBuffer);
