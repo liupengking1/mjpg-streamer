@@ -446,7 +446,7 @@ void *worker_thread(void *arg)
             if(total_size > 1<<30) {
                 total_size = 0;
                 counter++;
-                open_new_movie((int)counter;);
+                open_new_movie((int)counter);
             }
         }
 
