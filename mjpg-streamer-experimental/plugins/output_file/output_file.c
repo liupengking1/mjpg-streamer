@@ -277,6 +277,28 @@ void maintain_ringbuffer(int size)
 }
 
 /******************************************************************************
+Description.: Create new movie files and generate new movie names.
+Input Value.: id of the file
+Return Value: -
+******************************************************************************/
+int open_new_movie(int id){
+    if(fd != 0){
+        close(fd);
+    }
+    char *fnBuffer = malloc(strlen(mjpgFileName) + strlen(folder) + 3);
+    sprintf(fnBuffer, "%s-%d.avi/%s", folder, id, mjpgFileName);
+
+    OPRINT("output file.......: %s\n", fnBuffer);
+    if((fd = open(fnBuffer, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
+        OPRINT("could not open the file %s\n", fnBuffer);
+        free(fnBuffer);
+        return 1;
+    }
+    free(fnBuffer);
+    return 0;
+}
+
+/******************************************************************************
 Description.: this is the main worker thread
               it loops forever, grabs a fresh frame and stores it to file
 Input Value.:
@@ -408,7 +430,7 @@ void *worker_thread(void *arg)
         } else { // recording to MJPG file
             /* save picture to file */
             gettimeofday(&start, NULL);
-	    printf("interval:%lld us, ",(long long) timediff(&last_write));
+            printf("interval:%lld us, ",(long long) timediff(&last_write));
             ssize_t wrote_size = write(fd, frame, frame_size);
             if(wrote_size < 0) {
                 OPRINT("could not write to file %s\n", buffer2);
@@ -416,11 +438,16 @@ void *worker_thread(void *arg)
                 close(fd);
                 return NULL;
             }
-	    fsync(fd);
+            fsync(fd);
             gettimeofday(&last_write, NULL);
             total_size += wrote_size;
             printf("wrote %d/%zu bytes, delay_per_frame: %lld us, delay_per_kb: %lf us, instant_speed: %f MBps, average_speed: %f MBps\n", wrote_size, total_size, (long long) timediff(&start), DELAY_PER_MB(timediff(&start), wrote_size), MB_PER_SEC(wrote_size, timediff(&start)), MB_PER_SEC(wrote_size, timediff(&start)+timediff(&last_write)));
             record_data(timediff(&start), MB_PER_SEC(wrote_size, timediff(&start)+timediff(&last_write)));
+            if(total_size > 1<<30) {
+                total_size = 0;
+                counter++;
+                open_new_movie((int)counter;);
+            }
         }
 
         /* if specified, wait now */
@@ -582,16 +609,10 @@ int output_init(output_parameter *param, int id)
             OPRINT("ringbuffer size...: %s\n", "no ringbuffer");
         }
     } else {
-        char *fnBuffer = malloc(strlen(mjpgFileName) + strlen(folder) + 3);
-        sprintf(fnBuffer, "%s/%s", folder, mjpgFileName);
-
-        OPRINT("output file.......: %s\n", fnBuffer);
-        if((fd = open(fnBuffer, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
-            OPRINT("could not open the file %s\n", fnBuffer);
-            free(fnBuffer);
-            return 1;
+        int ret = open_new_movie(0);
+        if(ret != 0){
+            return ret;
         }
-        free(fnBuffer);
     }
 
     param->global->out[id].parametercount = 2;
