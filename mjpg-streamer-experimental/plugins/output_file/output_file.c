@@ -104,7 +104,9 @@ void record_disk_size(){
         fclose(f);
         memset(buf, 0, sizeof(buf));
         snprintf(buf, sizeof(buf), "findmnt -bno size %s > %s/disk_size", mp, logPath);
-        system(buf);
+        if(system(buf) != 0) {
+            printf("%s failed\n", buf);
+        };
         printf("\nmountpoint:%s\n",mp);
 
         memset(buf, 0, sizeof(buf));
@@ -142,17 +144,23 @@ void record_data(double time_val, float write_speed){
         /* Write speed and latency history */
         memset(buf, 0, sizeof(buf));
         snprintf(buf, sizeof(buf), "cat %s/latency >> %s/latencies", logPath, logPath);
-        system(buf);
+        if(system(buf) != 0) {
+            printf("%s failed\n", buf);
+        };
         memset(buf, 0, sizeof(buf));
         snprintf(buf, sizeof(buf), "cat %s/speed >> %s/speeds", logPath, logPath);
-        system(buf);
+        if(system(buf) != 0) {
+            printf("%s failed\n", buf);
+        };
 
 #if 0
         /* Write current file fragmentation */
         if(timediff(&last_record) > 100000) {
                 memset(buf, 0, sizeof(buf));
                 snprintf(buf, sizeof(buf), "filefrag -v %s > %s/filefrag", currentFilePath, logPath);
-                system(buf);
+                if(system(buf) != 0) {
+                    printf("%s failed\n", buf);
+                };
                 gettimeofday(&last_record, NULL);
         }
 #endif
