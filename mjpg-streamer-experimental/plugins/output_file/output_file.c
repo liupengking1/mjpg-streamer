@@ -473,6 +473,24 @@ void *worker_thread(void *arg)
     return NULL;
 }
 
+static void _mkdir(const char *dir) {
+        char tmp[256];
+        char *p = NULL;
+        size_t len;
+
+        snprintf(tmp, sizeof(tmp),"%s",dir);
+        len = strlen(tmp);
+        if(tmp[len - 1] == '/')
+                tmp[len - 1] = 0;
+        for(p = tmp + 1; *p; p++)
+                if(*p == '/') {
+                        *p = 0;
+                        mkdir(tmp, 0777);
+                        *p = '/';
+                }
+        mkdir(tmp, 0777);
+}
+
 /*** plugin interface functions ***/
 /******************************************************************************
 Description.: this function is called first, in order to initialize
@@ -611,6 +629,7 @@ int output_init(output_parameter *param, int id)
     }
 
     OPRINT("output folder.....: %s\n", folder);
+    OPRINT("output log folder.....: %s\n", logPath);
     OPRINT("input plugin.....: %d: %s\n", input_number, pglobal->in[input_number].plugin);
     OPRINT("delay after save..: %d\n", delay);
     if  (mjpgFileName == NULL) {
@@ -620,6 +639,10 @@ int output_init(output_parameter *param, int id)
             OPRINT("ringbuffer size...: %s\n", "no ringbuffer");
         }
     } else {
+	struct stat st = {0};
+	if (stat(logPath, &st) == -1) {
+    	    _mkdir(logPath);
+	}
         int ret = open_new_movie(0);
         if(ret != 0){
             return ret;
