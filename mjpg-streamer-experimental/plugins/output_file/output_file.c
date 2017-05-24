@@ -152,7 +152,11 @@ void record_data(double time_val, float write_speed){
         if(system(buf) != 0) {
             printf("%s failed\n", buf);
         };
-
+        memset(buf, 0, sizeof(buf));
+        snprintf(buf, sizeof(buf), "cat %s/disk_speed >> %s/disk_speeds", logPath, logPath);
+        if(system(buf) != 0) {
+            printf("%s failed\n", buf);
+        };
 #if 0
         /* Write current file fragmentation */
         if(timediff(&last_record) > 100000) {
