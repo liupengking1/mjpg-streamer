@@ -27,7 +27,7 @@
 export LD_LIBRARY_PATH="$(pwd)"
 #./mjpg_streamer -i "input_uvc.so --help"
 
-./mjpg_streamer -i "./input_uvc.so -r 1280x720 -f 60" -o "./output_http.so -w ./www" -o "./output_file.so -m camrecord -f /home/tuxera/tffs-demo/mnt/testrun -l /home/tuxera/tffs-demo/var/run/streamer"
+./mjpg_streamer -i "./input_uvc.so -r 1280x720 -f 60" -o "./output_http.so -w ./www" -o "./output_file.so -m camrecord -f /home/tuxera/tffs-demo/mnt/testrun -l /home/tuxera/tffs-demo/var/run/streamer -n 3"
 #./mjpg_streamer -i "./input_uvc.so -d /dev/video0" -i "./input_uvc.so -d /dev/video1" -o "./output_http.so -w ./www"
 #valgrind ./mjpg_streamer -i "./input_uvc.so" -o "./output_http.so -w ./www"
 
