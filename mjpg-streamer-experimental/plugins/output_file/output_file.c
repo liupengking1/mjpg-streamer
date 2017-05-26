@@ -69,6 +69,7 @@ static char *mjpgFileName = NULL;
 static char *linkFileName = NULL;
 static char *logPath = NULL;
 static char *currentFilePath = NULL;
+static int numMovies = 5;
 
 /******************************************************************************
 Description.: print a help message
@@ -87,6 +88,7 @@ void help(void)
             " [-d | --delay ].........: delay after saving pictures in ms\n" \
             " [-i | --input ].........: read frames from the specified input plugin\n" \
             " [-l | --logpath ].........: path to the record log files\n" \
+            " [-n | --numberoffiles ].........: maximum number of movie files to be recorded\n" \
             " The following arguments are takes effect only if the current mode is not MJPG\n" \
             " [-s | --size ]..........: size of ring buffer (max number of pictures to hold)\n" \
             " [-e | --exceed ]........: allow ringbuffer to exceed limit by this amount\n" \
@@ -300,7 +302,7 @@ int open_new_movie(int id){
     if(fd != 0){
         close(fd);
     }
-    char *fnBuffer = malloc(strlen(mjpgFileName) + strlen(folder) + 3);
+    char *fnBuffer = malloc(strlen(mjpgFileName) + strlen(folder) + 10);
     sprintf(fnBuffer, "%s/%s-%d.avi", folder, mjpgFileName, id);
     currentFilePath = strdup(fnBuffer);
     OPRINT("output file.......: %s\n", fnBuffer);
@@ -311,6 +313,13 @@ int open_new_movie(int id){
     }
     free(fnBuffer);
     return 0;
+}
+
+int remove_old_movie(int id){
+    char *fnBuffer = malloc(strlen(mjpgFileName) + strlen(folder) + 10);
+    sprintf(fnBuffer, "%s/%s-%d.avi", folder, mjpgFileName, id);
+    unlink(fnBuffer);
+    free(fnBuffer);
 }
 
 /******************************************************************************
@@ -461,6 +470,9 @@ void *worker_thread(void *arg)
             if(total_size > 1<<30) {
                 total_size = 0;
                 counter++;
+                if(counter >= numMovies) {
+                    remove_old_movie((int)(counter-numMovies));
+                }
                 open_new_movie((int)counter);
             }
         }
@@ -541,6 +553,8 @@ int output_init(output_parameter *param, int id)
             {"c", required_argument, 0, 0},
             {"command", required_argument, 0, 0},
             {"logpath", required_argument, 0, 0},
+            {"n", required_argument, 0, 0},
+            {"numberoffiles", required_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -624,6 +638,13 @@ int output_init(output_parameter *param, int id)
             DBG("case 18,19\n");
             logPath = strdup(optarg);
             break;
+            /* n numberoffiles */
+        case 16:
+        case 17:
+            DBG("case 16,17\n");
+            numMovies = atoi(optarg);
+            break;
+
         }
     }
 
