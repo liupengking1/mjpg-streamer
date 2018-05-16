@@ -639,9 +639,9 @@ int output_init(output_parameter *param, int id)
             logPath = strdup(optarg);
             break;
             /* n numberoffiles */
-        case 16:
-        case 17:
-            DBG("case 16,17\n");
+        case 20:
+        case 21:
+            DBG("case 20,21\n");
             numMovies = atoi(optarg);
             break;
 
