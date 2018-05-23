@@ -87,7 +87,7 @@ void help(void)
             " [-l | --link ]..........: link the last picture in ringbuffer as this fixed named file\n" \
             " [-d | --delay ].........: delay after saving pictures in ms\n" \
             " [-i | --input ].........: read frames from the specified input plugin\n" \
-            " [-l | --logpath ].........: path to the record log files\n" \
+            " [-p | --logpath ].........: path to the record log files\n" \
             " [-n | --numberoffiles ].........: maximum number of movie files to be recorded\n" \
             " The following arguments are takes effect only if the current mode is not MJPG\n" \
             " [-s | --size ]..........: size of ring buffer (max number of pictures to hold)\n" \
@@ -151,11 +151,6 @@ void record_data(double time_val, float write_speed){
         };
         memset(buf, 0, sizeof(buf));
         snprintf(buf, sizeof(buf), "cat %s/speed >> %s/speeds", logPath, logPath);
-        if(system(buf) != 0) {
-            printf("%s failed\n", buf);
-        };
-        memset(buf, 0, sizeof(buf));
-        snprintf(buf, sizeof(buf), "cat %s/disk_speed >> %s/disk_speeds", logPath, logPath);
         if(system(buf) != 0) {
             printf("%s failed\n", buf);
         };
@@ -552,6 +547,7 @@ int output_init(output_parameter *param, int id)
             {"link", required_argument, 0, 0},
             {"c", required_argument, 0, 0},
             {"command", required_argument, 0, 0},
+            {"p", required_argument, 0, 0},
             {"logpath", required_argument, 0, 0},
             {"n", required_argument, 0, 0},
             {"numberoffiles", required_argument, 0, 0},
@@ -632,7 +628,7 @@ int output_init(output_parameter *param, int id)
             DBG("case 16,17\n");
             command = strdup(optarg);
             break;
-            /* l logpath */
+            /* p logpath */
         case 18:
         case 19:
             DBG("case 18,19\n");
